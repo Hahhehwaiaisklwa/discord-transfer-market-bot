@@ -1,36 +1,46 @@
-import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
-  partials: [Partials.Message, Partials.Channel]
+  intents: [GatewayIntentBits.Guilds],
+  partials: [Partials.Channel]
 });
 
-const DATA_FILE = './data.json';
+client.commands = new Collection();
 
-// Load balances
-let balances = fs.existsSync(DATA_FILE) ? fs.readJsonSync(DATA_FILE) : {
-  "Portland Trailblazers": 1000000000,
-  "San Antonio Spurs": 1000000000,
-  "Golden State Warriors": 1000000000,
-  "Boston Celtics": 1000000000,
-  "Indiana Pacers": 1000000000,
-  "Cleveland Cavaliers": 1000000000,
-  "Miami Heat": 1000000000,
-  "Washington Wizards": 1000000000
-};
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Save balances
-const saveBalances = () => fs.writeJsonSync(DATA_FILE, balances);
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = await import(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
+}
 
-// On Ready
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
+  await client.application.commands.set([...client.commands.map(cmd => cmd.data)], process.env.GUILD_ID);
 });
 
-// More logic will be added here soon
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: '❌ There was an error executing that command.', ephemeral: true });
+  }
+});
 
 client.login(process.env.DISCORD_TOKEN);
+
