@@ -1,10 +1,4 @@
-commands/postcard.js
-``>
-
-4. Paste this code:
-
-```js
-import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import fs from 'fs-extra';
 
 export const data = new SlashCommandBuilder()
