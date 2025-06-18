@@ -1,6 +1,5 @@
 commands/postcard.js
 ``>
-3. It will auto-create a `commands` folder with the file inside
 
 4. Paste this code:
 
