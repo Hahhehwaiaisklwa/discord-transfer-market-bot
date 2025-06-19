@@ -15,7 +15,7 @@ const {
   PermissionsBitField,
 } = require('discord.js');
 const fs = require('fs');
-const { data: postcardCommand, execute: postcardExecute } = require('./commands/postcard.js');
+const { data: postcardCommand, execute: postcardExecute } = require('./commands/postcard.cjs');
 
 const client = new Client({
   intents: [
