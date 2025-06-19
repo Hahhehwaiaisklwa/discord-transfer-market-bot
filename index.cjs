@@ -119,8 +119,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isButton()) {
-      const [action, ...rest] = interaction.customId.split('-');
-      const playerName = rest.join('-');
+      const [action, name, channelId, messageId] = interaction.customId.split('-');
 
       if (action === 'cancel_release') {
         return interaction.update({ content: '❌ Release canceled.', components: [] });
@@ -134,17 +133,17 @@ client.on('interactionCreate', async interaction => {
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId(`confirm_buy-${playerName}`)
-            .setLabel(`Yes, buy ${playerName}`)
+            .setCustomId(`confirm_buy-${name}`)
+            .setLabel(`Yes, buy ${name}`)
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
-            .setCustomId(`cancel_buy-${playerName}`)
+            .setCustomId(`cancel_buy-${name}`)
             .setLabel('Cancel')
             .setStyle(ButtonStyle.Secondary)
         );
 
         return interaction.reply({
-          content: `Are you sure you want to buy **${playerName}**?`,
+          content: `Are you sure you want to buy **${name}**?`,
           components: [row],
           ephemeral: true
         });
@@ -156,8 +155,6 @@ client.on('interactionCreate', async interaction => {
 
       if (action === 'confirm_buy') {
         const gm = interaction.member;
-        const name = playerName;
-
         const teamName = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
         if (!teamName) {
           return interaction.update({ content: '❌ You are not assigned to a team.', components: [] });
@@ -191,34 +188,33 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (action === 'delete' && interaction.customId.startsWith('delete-confirm')) {
-        const confirmRow = new ActionRowBuilder().addComponents(
+        const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId(`delete-yes-${playerName}`)
+            .setCustomId(`delete-yes-${name}-${channelId}-${messageId}`)
             .setLabel('Yes, delete')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
-            .setCustomId(`delete-no-${playerName}`)
+            .setCustomId(`delete-no-${name}`)
             .setLabel('No')
             .setStyle(ButtonStyle.Secondary)
         );
 
         return interaction.reply({
-          content: `❗ Are you sure you want to delete **${playerName}** from the market?`,
-          components: [confirmRow],
+          content: `❗ Are you sure you want to delete **${name}** from the market?`,
+          components: [row],
           ephemeral: true
         });
       }
 
       if (action === 'delete' && interaction.customId.startsWith('delete-yes')) {
-        const messages = await interaction.channel.messages.fetch({ limit: 100 });
-        const cardMsg = messages.find(msg => msg.embeds[0]?.title?.includes(playerName));
-
-        if (!cardMsg) {
-          return interaction.update({ content: '❌ Could not find the card message.', components: [] });
+        try {
+          const channel = await client.channels.fetch(channelId);
+          const msg = await channel.messages.fetch(messageId);
+          await msg.delete();
+          return interaction.update({ content: `🗑️ **${name}** has been removed from the transfer market.`, components: [] });
+        } catch (err) {
+          return interaction.update({ content: '❌ Could not delete the card message.', components: [] });
         }
-
-        await cardMsg.delete();
-        return interaction.update({ content: `🗑️ **${playerName}** has been removed from the transfer market.`, components: [] });
       }
 
       if (action === 'delete' && interaction.customId.startsWith('delete-no')) {
