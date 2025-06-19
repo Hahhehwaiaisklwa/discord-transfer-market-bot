@@ -1,4 +1,4 @@
-// index.cjs — Full Transfer Market Bot with /release and /syncplayers
+// index.cjs — Final Transfer Market Bot
 
 const {
   Client,
@@ -14,8 +14,8 @@ const {
   ButtonStyle,
   PermissionsBitField,
 } = require('discord.js');
-
 const fs = require('fs');
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -97,7 +97,7 @@ client.on('interactionCreate', async interaction => {
             newPlayers[member.id] = {
               name: `<@${member.id}>`,
               team: assignedTeam,
-              value: 150.0,
+              value: 150.0
             };
           }
         });
@@ -106,7 +106,7 @@ client.on('interactionCreate', async interaction => {
         players = newPlayers;
 
         await interaction.editReply({
-          content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`,
+          content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`
         });
       }
 
@@ -121,29 +121,38 @@ client.on('interactionCreate', async interaction => {
         }
 
         const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-        if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+        if (!gmTeam) {
+          return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+        }
 
         const playerData = players[target.id];
         if (!playerData || playerData.team !== gmTeam) {
           return interaction.reply({ content: '❌ That player is not on your team.', ephemeral: true });
         }
 
-        const refund = playerData.value * 0.5;
+        const value = playerData.value ?? 150.0;
+        const refund = value * 0.5;
+        const refundDisplay = `$${refund.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M`;
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`confirm_release:${target.id}`).setLabel('Yes, release').setStyle(ButtonStyle.Danger),
-          new ButtonBuilder().setCustomId('cancel_release').setLabel('No, cancel').setStyle(ButtonStyle.Secondary)
+          new ButtonBuilder()
+            .setCustomId(`confirm_release:${target.id}`)
+            .setLabel('Yes, release')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('cancel_release')
+            .setLabel('No, cancel')
+            .setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({
-          content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
+          content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **${refundDisplay}** back.`,
           components: [row],
-          ephemeral: true,
+          ephemeral: true
         });
       }
     }
 
-    // Button interaction
     if (interaction.isButton()) {
       const [action, playerId] = interaction.customId.split(':');
 
@@ -154,12 +163,19 @@ client.on('interactionCreate', async interaction => {
       if (action === 'confirm_release') {
         const gm = interaction.member;
         const playerData = players[playerId];
-        if (!playerData) return interaction.update({ content: '❌ Player not found.', components: [] });
+        if (!playerData) {
+          return interaction.update({ content: '❌ Player not found.', components: [] });
+        }
 
         const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-        if (!gmTeam || playerData.team !== gmTeam) return interaction.update({ content: '❌ You cannot release this player.', components: [] });
+        if (!gmTeam || playerData.team !== gmTeam) {
+          return interaction.update({ content: '❌ You cannot release this player.', components: [] });
+        }
 
-        const refund = playerData.value * 0.5;
+        const value = playerData.value ?? 150.0;
+        const refund = value * 0.5;
+        const refundDisplay = `$${refund.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M`;
+
         data[gmTeam].balance += refund;
 
         const targetMember = await interaction.guild.members.fetch(playerId);
@@ -170,7 +186,7 @@ client.on('interactionCreate', async interaction => {
         fs.writeFileSync(playersPath, JSON.stringify(players, null, 2));
 
         try {
-          await targetMember.send(`You have been released from the **${gmTeam}** and placed on the transfer market for **$${playerData.value.toFixed(2)}M**.`);
+          await targetMember.send(`You have been released from the **${gmTeam}** and placed on the transfer market for **$${value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M**.`);
         } catch (e) {
           console.log(`❌ Failed to DM ${playerData.name}`);
         }
@@ -179,12 +195,15 @@ client.on('interactionCreate', async interaction => {
           .setTitle(`${playerData.name}`)
           .addFields(
             { name: 'Status', value: 'Free Agent', inline: true },
-            { name: 'Value', value: `$${playerData.value.toFixed(2)}M`, inline: true }
+            { name: 'Value', value: `$${value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M`, inline: true }
           )
           .setColor('Green');
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`buy:${playerId}`).setLabel('BUY').setStyle(ButtonStyle.Success)
+          new ButtonBuilder()
+            .setCustomId(`buy:${playerId}`)
+            .setLabel('BUY')
+            .setStyle(ButtonStyle.Success)
         );
 
         const marketChannel = await client.channels.fetch(TRANSFER_MARKET_CHANNEL_ID);
@@ -194,7 +213,7 @@ client.on('interactionCreate', async interaction => {
         await balanceChannel.send(`💰 ${gmTeam} balance updated: **$${data[gmTeam].balance.toLocaleString()}**`);
 
         const logChannel = await client.channels.fetch(TRANSACTION_LOG_CHANNEL_ID);
-        await logChannel.send(`📄 ${playerData.name} released by ${gmTeam}. Refund: **$${refund.toFixed(2)}M**.`);
+        await logChannel.send(`📄 ${playerData.name} released by ${gmTeam}. Refund: **${refundDisplay}**.`);
 
         return interaction.update({ content: `✅ ${playerData.name} released to free agency.`, components: [] });
       }
