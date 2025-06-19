@@ -9,6 +9,16 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load ENV variables
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
+
+if (!token || !clientId || !guildId) {
+  console.error('❌ Missing required environment variables.');
+  process.exit(1);
+}
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
   partials: [Partials.Channel]
@@ -27,7 +37,10 @@ for (const file of commandFiles) {
 
 client.once('ready', async () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
-  await client.application.commands.set([...client.commands.map(cmd => cmd.data)], process.env.GUILD_ID);
+  await client.application.commands.set(
+    [...client.commands.map(cmd => cmd.data)],
+    guildId
+  );
 });
 
 client.on('interactionCreate', async interaction => {
@@ -38,9 +51,11 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
   } catch (error) {
     console.error(error);
-    await interaction.reply({ content: '❌ There was an error executing that command.', ephemeral: true });
+    await interaction.reply({
+      content: '❌ There was an error executing that command.',
+      ephemeral: true
+    });
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-
+client.login(token);
