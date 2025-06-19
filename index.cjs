@@ -1,4 +1,4 @@
-// index.cjs — Final Transfer Market Bot with BUY + POSTCARD Support
+// index.cjs — Final Transfer Market Bot with BUY + DELETE + POSTCARD Support
 
 const {
   Client,
@@ -119,7 +119,8 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isButton()) {
-      const [action, playerName] = interaction.customId.split(':');
+      const [action, ...rest] = interaction.customId.split('-');
+      const playerName = rest.join('-');
 
       if (action === 'cancel_release') {
         return interaction.update({ content: '❌ Release canceled.', components: [] });
@@ -133,11 +134,11 @@ client.on('interactionCreate', async interaction => {
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId(`confirm_buy:${playerName}`)
+            .setCustomId(`confirm_buy-${playerName}`)
             .setLabel(`Yes, buy ${playerName}`)
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
-            .setCustomId('cancel_buy')
+            .setCustomId(`cancel_buy-${playerName}`)
             .setLabel('Cancel')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -170,7 +171,7 @@ client.on('interactionCreate', async interaction => {
 
         const embed = cardMsg.embeds[0];
         const valueField = embed.fields.find(f => f.name.includes('Value'));
-        const price = parseInt(valueField?.value.replace(/[^0-9]/g, '') || '0', 10);
+        const price = parseFloat(valueField?.value.replace(/[^0-9.]/g, '') || '0');
 
         data[teamName].balance -= price;
         fs.writeFileSync('./data.json', JSON.stringify(data, null, 2));
@@ -180,13 +181,48 @@ client.on('interactionCreate', async interaction => {
         const teamChannelName = teamName.toLowerCase().replace(/ /g, '-');
         const teamChannel = interaction.guild.channels.cache.find(c => c.name === teamChannelName);
         if (teamChannel) {
-          await teamChannel.send(`💸 **${name}** was purchased for **$${price.toLocaleString()}**\n💰 New Balance: **$${data[teamName].balance.toLocaleString()}**\n<@&${GENERAL_MANAGER_ROLE_ID}>`);
+          await teamChannel.send(`💸 **${name}** was purchased for **$${price.toFixed(2)}M**\n💰 New Balance: **$${data[teamName].balance.toFixed(2)}M**\n<@&${GENERAL_MANAGER_ROLE_ID}>`);
         }
 
         const logChannel = await client.channels.fetch(TRANSACTION_LOG_CHANNEL_ID);
-        await logChannel.send(`🟢 **${name}** was bought by **${teamName}** for **$${price.toLocaleString()}**.`);
+        await logChannel.send(`🟢 **${name}** was bought by **${teamName}** for **$${price.toFixed(2)}M**.`);
 
-        return interaction.update({ content: `✅ You bought **${name}** for $${price.toLocaleString()}.`, components: [] });
+        return interaction.update({ content: `✅ You bought **${name}** for $${price.toFixed(2)}M.`, components: [] });
+      }
+
+      if (action === 'delete' && interaction.customId.startsWith('delete-confirm')) {
+        const confirmRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`delete-yes-${playerName}`)
+            .setLabel('Yes, delete')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`delete-no-${playerName}`)
+            .setLabel('No')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        return interaction.reply({
+          content: `❗ Are you sure you want to delete **${playerName}** from the market?`,
+          components: [confirmRow],
+          ephemeral: true
+        });
+      }
+
+      if (action === 'delete' && interaction.customId.startsWith('delete-yes')) {
+        const messages = await interaction.channel.messages.fetch({ limit: 100 });
+        const cardMsg = messages.find(msg => msg.embeds[0]?.title?.includes(playerName));
+
+        if (!cardMsg) {
+          return interaction.update({ content: '❌ Could not find the card message.', components: [] });
+        }
+
+        await cardMsg.delete();
+        return interaction.update({ content: `🗑️ **${playerName}** has been removed from the transfer market.`, components: [] });
+      }
+
+      if (action === 'delete' && interaction.customId.startsWith('delete-no')) {
+        return interaction.update({ content: '❌ Deletion canceled.', components: [] });
       }
     }
   } catch (err) {
