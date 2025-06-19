@@ -1,4 +1,10 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require('discord.js');
 const fs = require('fs-extra');
 
 module.exports = {
@@ -28,12 +34,14 @@ module.exports = {
     const image = interaction.options.getAttachment('image');
     const isFreeAgent = interaction.options.getBoolean('freeagent');
 
+    const formattedPrice = parseFloat(price.toFixed(2)).toString();
+
     const embed = new EmbedBuilder()
       .setTitle(`📇 Player: ${name}`)
       .addFields(
         {
           name: '💰 Value',
-          value: `$${parseFloat(price.toFixed(2)).toString()}M`,
+          value: `$${formattedPrice}M`,
           inline: true
         },
         {
@@ -51,7 +59,11 @@ module.exports = {
         .setCustomId(`buy-${name}`)
         .setLabel('BUY')
         .setStyle(ButtonStyle.Success)
-        .setDisabled(!isFreeAgent)
+        .setDisabled(!isFreeAgent),
+      new ButtonBuilder()
+        .setCustomId(`delete-confirm-${name}`)
+        .setLabel('DELETE')
+        .setStyle(ButtonStyle.Danger)
     );
 
     if (!isFreeAgent) {
