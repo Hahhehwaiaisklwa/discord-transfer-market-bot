@@ -26,6 +26,7 @@ module.exports = {
     const price = interaction.options.getNumber('price');
     const image = interaction.options.getAttachment('image');
     const isFreeAgent = interaction.options.getBoolean('freeagent');
+    const channelId = interaction.channel.id;
 
     const embed = new EmbedBuilder()
       .setTitle(`📇 Player: ${name}`)
@@ -50,36 +51,31 @@ module.exports = {
         .setCustomId(`buy-${name}`)
         .setLabel('BUY')
         .setStyle(ButtonStyle.Success)
-        .setDisabled(!isFreeAgent),
+        .setDisabled(!isFreeAgent)
+    );
+
+    if (!isFreeAgent) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`trade-${name}`)
+          .setLabel('TRADE')
+          .setStyle(ButtonStyle.Primary)
+      );
+    }
+
+    row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`trade-${name}`)
-        .setLabel('TRADE')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`delete-confirm-${name}`)
+        .setCustomId(`delete-confirm-${name}-${channelId}-TEMP`)
         .setLabel('DELETE')
         .setStyle(ButtonStyle.Danger)
     );
 
-    const sentMessage = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+    const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
 
-    // Update DELETE button customId to include channel and message info
-    const updatedRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`buy-${name}`)
-        .setLabel('BUY')
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(!isFreeAgent),
-      new ButtonBuilder()
-        .setCustomId(`trade-${name}`)
-        .setLabel('TRADE')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`delete-confirm-${name}-${sentMessage.channel.id}-${sentMessage.id}`)
-        .setLabel('DELETE')
-        .setStyle(ButtonStyle.Danger)
-    );
+    // Update messageId in the delete button for accurate deletion later
+    const updatedRow = ActionRowBuilder.from(row);
+    updatedRow.components[updatedRow.components.length - 1].setCustomId(`delete-confirm-${name}-${channelId}-${message.id}`);
 
-    await sentMessage.edit({ components: [updatedRow] });
+    await message.edit({ components: [updatedRow] });
   }
 };
