@@ -119,7 +119,11 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isButton()) {
-      const [action, name, channelId, messageId] = interaction.customId.split('-');
+      const parts = interaction.customId.split('-');
+      const action = parts[0];
+      const name = parts[1];
+      const channelId = parts[2];
+      const messageId = parts[3];
 
       if (action === 'cancel_release') {
         return interaction.update({ content: '❌ Release canceled.', components: [] });
@@ -187,26 +191,26 @@ client.on('interactionCreate', async interaction => {
         return interaction.update({ content: `✅ You bought **${name}** for $${price.toFixed(2)}M.`, components: [] });
       }
 
-      if (action === 'delete' && interaction.customId.startsWith('delete-confirm')) {
-        const row = new ActionRowBuilder().addComponents(
+      if (action === 'delete' && parts[1] === 'confirm') {
+        const confirmRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId(`delete-yes-${name}-${channelId}-${messageId}`)
+            .setCustomId(`delete-yes-${parts[2]}-${parts[3]}-${parts[4]}`)
             .setLabel('Yes, delete')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
-            .setCustomId(`delete-no-${name}`)
+            .setCustomId(`delete-no-${parts[2]}`)
             .setLabel('No')
             .setStyle(ButtonStyle.Secondary)
         );
 
         return interaction.reply({
-          content: `❗ Are you sure you want to delete **${name}** from the market?`,
-          components: [row],
+          content: `❗ Are you sure you want to delete **${parts[2]}** from the market?`,
+          components: [confirmRow],
           ephemeral: true
         });
       }
 
-      if (action === 'delete' && interaction.customId.startsWith('delete-yes')) {
+      if (action === 'delete' && parts[1] === 'yes') {
         try {
           const channel = await client.channels.fetch(channelId);
           const msg = await channel.messages.fetch(messageId);
@@ -217,7 +221,7 @@ client.on('interactionCreate', async interaction => {
         }
       }
 
-      if (action === 'delete' && interaction.customId.startsWith('delete-no')) {
+      if (action === 'delete' && parts[1] === 'no') {
         return interaction.update({ content: '❌ Deletion canceled.', components: [] });
       }
     }
