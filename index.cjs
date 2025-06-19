@@ -1,5 +1,4 @@
-// Discord Transfer Market Bot (Discord.js v14)
-// Supports /release + /syncplayers, manages player DB, balances, roles
+// index.cjs — Full Transfer Market Bot with /release and /syncplayers
 
 const {
   Client,
@@ -13,7 +12,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  PermissionsBitField
+  PermissionsBitField,
 } = require('discord.js');
 
 const fs = require('fs');
@@ -23,36 +22,37 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageReactions
+    GatewayIntentBits.GuildMessageReactions,
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
-// ENV variables
+// Environment variables
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
+
 const TRANSFER_MARKET_CHANNEL_ID = process.env.TRANSFER_MARKET_CHANNEL_ID;
 const TEAM_BALANCES_CHANNEL_ID = process.env.TEAM_BALANCES_CHANNEL_ID;
 const TRANSACTION_LOG_CHANNEL_ID = process.env.TRANSFER_MARKET_LOG_CHANNEL_ID;
+
 const GENERAL_MANAGER_ROLE_ID = process.env.GENERAL_MANAGER_ROLE_ID;
 const PLAYER_ROLE_ID = process.env.PLAYER_ROLE_ID;
 const FREE_AGENT_ROLE_ID = process.env.FREE_AGENT_ROLE_ID;
 
-// --- In-memory database ---
-let players = fs.existsSync('./players.json')
-  ? JSON.parse(fs.readFileSync('./players.json'))
-  : {};
+// Load or initialize player data
+const playersPath = './players.json';
+let players = {};
+if (fs.existsSync(playersPath)) {
+  players = JSON.parse(fs.readFileSync(playersPath));
+}
 
-let teams = {
-  "Lakers": { roleId: process.env.ROLE_ID_LAKERS, balance: 1000000000 },
-  "Celtics": { roleId: process.env.ROLE_ID_CELTICS, balance: 1000000000 },
-  "Warriors": { roleId: process.env.ROLE_ID_WARRIORS, balance: 1000000000 },
-  // Add all 30 teams like above using env vars
-};
+// Team setup
+const data = require('./data.json'); // contains balances and team-role mappings
 
 client.commands = new Collection();
 
+// Slash Commands
 const releaseCommand = new SlashCommandBuilder()
   .setName('release')
   .setDescription('Release a player to free agency')
@@ -64,7 +64,7 @@ const releaseCommand = new SlashCommandBuilder()
 
 const syncPlayersCommand = new SlashCommandBuilder()
   .setName('syncplayers')
-  .setDescription('Sync all users with the Player role into players.json');
+  .setDescription('Sync players.json with all users that have the Player role');
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -79,17 +79,17 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    // /syncplayers
-    if (interaction.commandName === 'syncplayers') {
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+  try {
+    // /syncplayers command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'syncplayers') {
+      if (!interaction.memberPermissions.has(PermissionsBitField.Flags.Administrator)) {
         return interaction.reply({ content: '❌ Only admins can run this command.', ephemeral: true });
       }
 
       await interaction.deferReply({ ephemeral: true });
-
       const guild = interaction.guild;
       await guild.members.fetch();
+
       const newPlayers = {};
 
       guild.members.cache.forEach(member => {
@@ -102,16 +102,16 @@ client.on('interactionCreate', async interaction => {
         }
       });
 
+      fs.writeFileSync(playersPath, JSON.stringify(newPlayers, null, 2));
       players = newPlayers;
-      fs.writeFileSync('./players.json', JSON.stringify(players, null, 2));
 
       await interaction.editReply({
-        content: `✅ Synced ${Object.keys(players).length} players into players.json`
+        content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`
       });
     }
 
-    // /release
-    if (interaction.commandName === 'release') {
+    // /release command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'release') {
       const gm = interaction.member;
       const target = interaction.options.getUser('player');
       const targetMember = interaction.guild.members.cache.get(target.id);
@@ -120,7 +120,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
       }
 
-      const gmTeam = Object.keys(teams).find(team => gm.roles.cache.has(teams[team].roleId));
+      const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
       if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
 
       const playerData = players[target.id];
@@ -147,67 +147,72 @@ client.on('interactionCreate', async interaction => {
         ephemeral: true
       });
     }
-  }
 
-  // Buttons
-  if (interaction.isButton()) {
-    const [action, playerId] = interaction.customId.split(':');
+    // Button interactions
+    if (interaction.isButton()) {
+      const [action, playerId] = interaction.customId.split(':');
 
-    if (action === 'cancel_release') {
-      return interaction.update({ content: '❌ Release canceled.', components: [] });
+      if (action === 'cancel_release') {
+        return interaction.update({ content: '❌ Release canceled.', components: [] });
+      }
+
+      if (action === 'confirm_release') {
+        const gm = interaction.member;
+        const playerData = players[playerId];
+        if (!playerData) return interaction.update({ content: '❌ Player not found.', components: [] });
+
+        const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
+        if (!gmTeam || playerData.team !== gmTeam) return interaction.update({ content: '❌ You cannot release this player.', components: [] });
+
+        const refund = playerData.value * 0.5;
+        data[gmTeam].balance += refund;
+
+        const targetMember = await interaction.guild.members.fetch(playerId);
+        await targetMember.roles.remove(data[gmTeam].roleId);
+        await targetMember.roles.add(FREE_AGENT_ROLE_ID);
+
+        playerData.team = null;
+        fs.writeFileSync(playersPath, JSON.stringify(players, null, 2));
+
+        try {
+          await targetMember.send(`You have been released from the **${gmTeam}** and placed on the transfer market for **$${playerData.value.toFixed(2)}M**.`);
+        } catch (e) {
+          console.log(`❌ Failed to DM ${playerData.name}`);
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`${playerData.name}`)
+          .addFields(
+            { name: 'Status', value: 'Free Agent', inline: true },
+            { name: 'Value', value: `$${playerData.value.toFixed(2)}M`, inline: true }
+          )
+          .setColor('Green');
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`buy:${playerId}`)
+            .setLabel('BUY')
+            .setStyle(ButtonStyle.Success)
+        );
+
+        const marketChannel = await client.channels.fetch(TRANSFER_MARKET_CHANNEL_ID);
+        await marketChannel.send({ embeds: [embed], components: [row] });
+
+        const balanceChannel = await client.channels.fetch(TEAM_BALANCES_CHANNEL_ID);
+        await balanceChannel.send(`💰 ${gmTeam} balance updated: **$${data[gmTeam].balance.toLocaleString()}**`);
+
+        const logChannel = await client.channels.fetch(TRANSACTION_LOG_CHANNEL_ID);
+        await logChannel.send(`📄 ${playerData.name} released by ${gmTeam}. Refund: **$${refund.toFixed(2)}M**.`);
+
+        return interaction.update({ content: `✅ ${playerData.name} released to free agency.`, components: [] });
+      }
     }
-
-    if (action === 'confirm_release') {
-      const gm = interaction.member;
-      const playerData = players[playerId];
-      if (!playerData) return interaction.update({ content: '❌ Player not found.', components: [] });
-
-      const gmTeam = Object.keys(teams).find(team => gm.roles.cache.has(teams[team].roleId));
-      if (!gmTeam || playerData.team !== gmTeam) {
-        return interaction.update({ content: '❌ You cannot release this player.', components: [] });
-      }
-
-      const refund = playerData.value * 0.5;
-      teams[gmTeam].balance += refund;
-
-      const targetMember = await interaction.guild.members.fetch(playerId);
-      await targetMember.roles.remove(teams[gmTeam].roleId);
-      await targetMember.roles.add(FREE_AGENT_ROLE_ID);
-
-      playerData.team = null;
-      fs.writeFileSync('./players.json', JSON.stringify(players, null, 2));
-
-      try {
-        await targetMember.send(`📢 You have been released from the **${gmTeam}** and placed on the transfer market for **$${playerData.value.toFixed(2)}M**.`);
-      } catch (e) {
-        console.log(`DM failed for ${playerData.name}`);
-      }
-
-      const embed = new EmbedBuilder()
-        .setTitle(`${playerData.name}`)
-        .addFields(
-          { name: 'Status', value: 'Free Agent', inline: true },
-          { name: 'Value', value: `$${playerData.value.toFixed(2)}M`, inline: true }
-        )
-        .setColor('Green');
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`buy:${playerId}`)
-          .setLabel('BUY')
-          .setStyle(ButtonStyle.Success)
-      );
-
-      const marketChannel = await client.channels.fetch(TRANSFER_MARKET_CHANNEL_ID);
-      await marketChannel.send({ embeds: [embed], components: [row] });
-
-      const balanceChannel = await client.channels.fetch(TEAM_BALANCES_CHANNEL_ID);
-      await balanceChannel.send(`✅ ${gmTeam} balance updated: **$${teams[gmTeam].balance.toLocaleString()}**`);
-
-      const logChannel = await client.channels.fetch(TRANSACTION_LOG_CHANNEL_ID);
-      await logChannel.send(`📝 ${playerData.name} released by ${gmTeam}. Refund: **$${refund.toFixed(2)}M**.`);
-
-      return interaction.update({ content: `✅ ${playerData.name} released to free agency.`, components: [] });
+  } catch (err) {
+    console.error('❌ Error in interaction handler:', err);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: '❌ An error occurred.', ephemeral: true });
+    } else {
+      await interaction.reply({ content: '❌ Bot error occurred.', ephemeral: true });
     }
   }
 });
