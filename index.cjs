@@ -1,6 +1,6 @@
-// Discord Transfer Market Bot (Discord.js v14)
+const { Client, GatewayIntentBits, Partials, Collection, SlashCommandBuilder, Routes, REST, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const fs = require('fs');
 
-const { Client, GatewayIntentBits, Partials, Collection, SlashCommandBuilder, Routes, REST, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -12,7 +12,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-// ✅ Environment Variables
+// Env Vars
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
@@ -25,15 +25,21 @@ const GENERAL_MANAGER_ROLE_ID = process.env.GENERAL_MANAGER_ROLE_ID;
 const PLAYER_ROLE_ID = process.env.PLAYER_ROLE_ID;
 const FREE_AGENT_ROLE_ID = process.env.FREE_AGENT_ROLE_ID;
 
-// --- In-memory database ---
+// Load players from JSON
+let players = {};
+try {
+  players = JSON.parse(fs.readFileSync('./players.json'));
+} catch (err) {
+  console.error('⚠️ Failed to load players.json:', err);
+  players = {};
+}
+
+// Static team setup
 const teams = {
+  "Warriors": { roleId: process.env.ROLE_ID_WARRIORS, balance: 1000000000 },
   "Lakers": { roleId: process.env.ROLE_ID_LAKERS, balance: 1000000000 },
   "Celtics": { roleId: process.env.ROLE_ID_CELTICS, balance: 1000000000 },
   // Add the rest of your teams here
-};
-
-const players = {
-  // userId: { name, team, value }
 };
 
 client.commands = new Collection();
@@ -51,52 +57,48 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-
   await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
     body: [releaseCommand.toJSON()]
   });
-
   console.log('✅ Slash commands registered.');
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === 'release') {
-      const gm = interaction.member;
-      const target = interaction.options.getUser('player');
-      const targetMember = interaction.guild.members.cache.get(target.id);
+  if (interaction.isChatInputCommand() && interaction.commandName === 'release') {
+    const gm = interaction.member;
+    const target = interaction.options.getUser('player');
+    const targetMember = interaction.guild.members.cache.get(target.id);
 
-      if (!gm.roles.cache.has(GENERAL_MANAGER_ROLE_ID)) {
-        return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
-      }
-
-      const gmTeam = Object.keys(teams).find(team => gm.roles.cache.has(teams[team].roleId));
-      if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
-
-      const playerData = players[target.id];
-      if (!playerData || playerData.team !== gmTeam) {
-        return interaction.reply({ content: '❌ That player is not on your team.', ephemeral: true });
-      }
-
-      const refund = playerData.value * 0.5;
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`confirm_release:${target.id}`)
-          .setLabel('Yes, release')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('cancel_release')
-          .setLabel('No, cancel')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      await interaction.reply({
-        content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
-        components: [row],
-        ephemeral: true
-      });
+    if (!gm.roles.cache.has(GENERAL_MANAGER_ROLE_ID)) {
+      return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
     }
+
+    const gmTeam = Object.keys(teams).find(team => gm.roles.cache.has(teams[team].roleId));
+    if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+
+    const playerData = players[target.id];
+    if (!playerData || playerData.team !== gmTeam) {
+      return interaction.reply({ content: '❌ That player is not on your team.', ephemeral: true });
+    }
+
+    const refund = playerData.value * 0.5;
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`confirm_release:${target.id}`)
+        .setLabel('Yes, release')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('cancel_release')
+        .setLabel('No, cancel')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.reply({
+      content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
+      components: [row],
+      ephemeral: true
+    });
   }
 
   if (interaction.isButton()) {
@@ -122,15 +124,14 @@ client.on('interactionCreate', async interaction => {
       await targetMember.roles.add(FREE_AGENT_ROLE_ID);
 
       playerData.team = null;
+      fs.writeFileSync('./players.json', JSON.stringify(players, null, 2));
 
-      // DM player
       try {
         await targetMember.send(`You have been released from the **${gmTeam}** and placed on the transfer market for **$${playerData.value.toFixed(2)}M**.`);
       } catch (e) {
         console.log(`DM failed for ${playerData.name}`);
       }
 
-      // Post to transfer market
       const embed = new EmbedBuilder()
         .setTitle(`${playerData.name}`)
         .addFields(
