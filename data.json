@@ -1,31 +1,118 @@
 {
-  "philadelphia 76ers": { "roleId": "ROLE_ID_76ERS", "balance": 1000000000 },
-  "toronto raptors": { "roleId": "ROLE_ID_RAPTORS", "balance": 1000000000 },
-  "phoenix suns": { "roleId": "ROLE_ID_SUNS", "balance": 1000000000 },
-  "los angeles lakers": { "roleId": "ROLE_ID_LAKERS", "balance": 1000000000 },
-  "golden state warriors": { "roleId": "ROLE_ID_WARRIORS", "balance": 1000000000 },
-  "memphis grizzlies": { "roleId": "ROLE_ID_GRIZZLIES", "balance": 1000000000 },
-  "houston rockets": { "roleId": "ROLE_ID_ROCKETS", "balance": 1000000000 },
-  "milwaukee bucks": { "roleId": "ROLE_ID_BUCKS", "balance": 1000000000 },
-  "utah jazz": { "roleId": "ROLE_ID_JAZZ", "balance": 1000000000 },
-  "oklahoma city thunder": { "roleId": "ROLE_ID_THUNDER", "balance": 1000000000 },
-  "cleveland cavaliers": { "roleId": "ROLE_ID_CAVALIERS", "balance": 1000000000 },
-  "boston celtics": { "roleId": "ROLE_ID_CELTICS", "balance": 1000000000 },
-  "dallas mavericks": { "roleId": "ROLE_ID_MAVERICKS", "balance": 1000000000 },
-  "denver nuggets": { "roleId": "ROLE_ID_NUGGETS", "balance": 1000000000 },
-  "miami heat": { "roleId": "ROLE_ID_HEAT", "balance": 1000000000 },
-  "brooklyn nets": { "roleId": "ROLE_ID_NETS", "balance": 1000000000 },
-  "los angeles clippers": { "roleId": "ROLE_ID_CLIPPERS", "balance": 1000000000 },
-  "chicago bulls": { "roleId": "ROLE_ID_BULLS", "balance": 1000000000 },
-  "washington wizards": { "roleId": "ROLE_ID_WIZARDS", "balance": 1000000000 },
-  "atlanta hawks": { "roleId": "ROLE_ID_HAWKS", "balance": 1000000000 },
-  "new york knicks": { "roleId": "ROLE_ID_KNICKS", "balance": 1000000000 },
-  "minnesota timberwolves": { "roleId": "ROLE_ID_TIMBERWOLVES", "balance": 1000000000 },
-  "sacramento kings": { "roleId": "ROLE_ID_KINGS", "balance": 1000000000 },
-  "san antonio spurs": { "roleId": "ROLE_ID_SPURS", "balance": 1000000000 },
-  "detroit pistons": { "roleId": "ROLE_ID_PISTONS", "balance": 1000000000 },
-  "portland trail blazers": { "roleId": "ROLE_ID_TRAILBLAIZERS", "balance": 1000000000 },
-  "indiana pacers": { "roleId": "ROLE_ID_PACERS", "balance": 1000000000 },
-  "new orleans pelicans": { "roleId": "ROLE_ID_PELICANS", "balance": 1000000000 },
-  "orlando magic": { "roleId": "ROLE_ID_MAGIC", "balance": 1000000000 }
+  "philadelphia 76ers": {
+    "roleId": "1385082298411651083",
+    "balance": 1000000000
+  },
+  "toronto raptors": {
+    "roleId": "1385083315794481173",
+    "balance": 1000000000
+  },
+  "phoenix suns": {
+    "roleId": "1385083613300785356",
+    "balance": 1000000000
+  },
+  "los angeles lakers": {
+    "roleId": "1385083670557229146",
+    "balance": 1000000000
+  },
+  "golden state warriors": {
+    "roleId": "1385083813234737262",
+    "balance": 1000000000
+  },
+  "memphis grizzlies": {
+    "roleId": "1385083924794966067",
+    "balance": 1000000000
+  },
+  "houston rockets": {
+    "roleId": "1385084042155921517",
+    "balance": 1000000000
+  },
+  "milwaukee bucks": {
+    "roleId": "1385084096426020954",
+    "balance": 1000000000
+  },
+  "utah jazz": {
+    "roleId": "1385084216592699472",
+    "balance": 1000000000
+  },
+  "oklahoma city thunder": {
+    "roleId": "1385084279373041875",
+    "balance": 1000000000
+  },
+  "cleveland cavaliers": {
+    "roleId": "1385084384784420969",
+    "balance": 1000000000
+  },
+  "boston celtics": {
+    "roleId": "1385084501042008154",
+    "balance": 1000000000
+  },
+  "dallas mavericks": {
+    "roleId": "1385084552480948345",
+    "balance": 1000000000
+  },
+  "denver nuggets": {
+    "roleId": "1385084603232030750",
+    "balance": 1000000000
+  },
+  "miami heat": {
+    "roleId": "1385084657997185185",
+    "balance": 1000000000
+  },
+  "brooklyn nets": {
+    "roleId": "1385084722467831908",
+    "balance": 1000000000
+  },
+  "los angeles clippers": {
+    "roleId": "1385084894928961536",
+    "balance": 1000000000
+  },
+  "chicago bulls": {
+    "roleId": "1385085021106343978",
+    "balance": 1000000000
+  },
+  "washington wizards": {
+    "roleId": "1385085081067978822",
+    "balance": 1000000000
+  },
+  "atlanta hawks": {
+    "roleId": "1385085118888280216",
+    "balance": 1000000000
+  },
+  "new york knicks": {
+    "roleId": "1385085191126777946",
+    "balance": 1000000000
+  },
+  "minnesota timberwolves": {
+    "roleId": "1385085241001250928",
+    "balance": 1000000000
+  },
+  "sacramento kings": {
+    "roleId": "1385085363055231146",
+    "balance": 1000000000
+  },
+  "san antonio spurs": {
+    "roleId": "1385085433066553354",
+    "balance": 1000000000
+  },
+  "detroit pistons": {
+    "roleId": "1385085483922751701",
+    "balance": 1000000000
+  },
+  "portland trail blazers": {
+    "roleId": "1385085521902174309",
+    "balance": 1000000000
+  },
+  "indiana pacers": {
+    "roleId": "1385085623471444058",
+    "balance": 1000000000
+  },
+  "new orleans pelicans": {
+    "roleId": "1385085664671961139",
+    "balance": 1000000000
+  },
+  "orlando magic": {
+    "roleId": "1385085727674601542",
+    "balance": 1000000000
+  }
 }
