@@ -9,13 +9,12 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load ENV variables
-const token = process.env.DISCORD_TOKEN;
-const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
+console.log("DISCORD_TOKEN:", process.env.DISCORD_TOKEN ? "✅ Loaded" : "❌ Missing");
+console.log("CLIENT_ID:", process.env.CLIENT_ID ? "✅ Loaded" : "❌ Missing");
+console.log("GUILD_ID:", process.env.GUILD_ID ? "✅ Loaded" : "❌ Missing");
 
-if (!token || !clientId || !guildId) {
-  console.error('❌ Missing required environment variables.');
+if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
+  console.error("❌ Missing required environment variables.");
   process.exit(1);
 }
 
@@ -37,10 +36,7 @@ for (const file of commandFiles) {
 
 client.once('ready', async () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
-  await client.application.commands.set(
-    [...client.commands.map(cmd => cmd.data)],
-    guildId
-  );
+  await client.application.commands.set([...client.commands.map(cmd => cmd.data)], process.env.GUILD_ID);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -51,11 +47,8 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
   } catch (error) {
     console.error(error);
-    await interaction.reply({
-      content: '❌ There was an error executing that command.',
-      ephemeral: true
-    });
+    await interaction.reply({ content: '❌ There was an error executing that command.', ephemeral: true });
   }
 });
 
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);
