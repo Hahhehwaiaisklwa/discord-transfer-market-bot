@@ -6,25 +6,41 @@ module.exports = {
     .setName('postcard')
     .setDescription('Post a player card to the transfer market')
     .addStringOption(option =>
-      option.setName('name').setDescription('Player name').setRequired(true))
+      option.setName('name')
+        .setDescription('Player name')
+        .setRequired(true))
     .addNumberOption(option =>
-      option.setName('price').setDescription('Price in millions (e.g., 218.64)').setRequired(true))
+      option.setName('price')
+        .setDescription('Price in millions (e.g., 218.64)')
+        .setRequired(true))
     .addAttachmentOption(option =>
-      option.setName('image').setDescription('Attach player card image').setRequired(true))
+      option.setName('image')
+        .setDescription('Attach player card image')
+        .setRequired(true))
     .addBooleanOption(option =>
-      option.setName('freeagent').setDescription('Is this player a free agent?').setRequired(true)),
+      option.setName('freeagent')
+        .setDescription('Is this player a free agent?')
+        .setRequired(true)),
 
   async execute(interaction) {
     const name = interaction.options.getString('name');
-    const price = interaction.options.getInteger('price');
+    const price = interaction.options.getNumber('price'); // ✅ using getNumber for decimals
     const image = interaction.options.getAttachment('image');
     const isFreeAgent = interaction.options.getBoolean('freeagent');
 
     const embed = new EmbedBuilder()
       .setTitle(`📇 Player: ${name}`)
       .addFields(
-        { name: '💰 Value', value: `$${price.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M`, inline: true },
-        { name: '📍 Status', value: isFreeAgent ? 'Free Agent' : 'Owned by Team', inline: true }
+        {
+          name: '💰 Value',
+          value: `$${price.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1')}M`,
+          inline: true
+        },
+        {
+          name: '📍 Status',
+          value: isFreeAgent ? 'Free Agent' : 'Owned by Team',
+          inline: true
+        }
       )
       .setImage(image.url)
       .setColor(isFreeAgent ? 0x00b0f4 : 0xff9e00)
