@@ -7,8 +7,8 @@ module.exports = {
     .setDescription('Post a player card to the transfer market')
     .addStringOption(option =>
       option.setName('name').setDescription('Player name').setRequired(true))
-    .addIntegerOption(option =>
-      option.setName('price').setDescription('Price in dollars').setRequired(true))
+    .addNumberOption(option =>
+      option.setName('price').setDescription('Price in millions (e.g., 218.64)').setRequired(true))
     .addAttachmentOption(option =>
       option.setName('image').setDescription('Attach player card image').setRequired(true))
     .addBooleanOption(option =>
@@ -23,7 +23,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(`📇 Player: ${name}`)
       .addFields(
-        { name: '💰 Value', value: `$${price.toLocaleString()}`, inline: true },
+        { name: '💰 Value', value: `$${price.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}M`, inline: true },
         { name: '📍 Status', value: isFreeAgent ? 'Free Agent' : 'Owned by Team', inline: true }
       )
       .setImage(image.url)
