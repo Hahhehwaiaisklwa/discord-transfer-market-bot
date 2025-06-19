@@ -1,5 +1,3 @@
-// index.cjs — Full Transfer Market Bot with /release and /syncplayers
-
 const {
   Client,
   GatewayIntentBits,
@@ -14,8 +12,8 @@ const {
   ButtonStyle,
   PermissionsBitField,
 } = require('discord.js');
-
 const fs = require('fs');
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -47,19 +45,16 @@ if (fs.existsSync(playersPath)) {
   players = JSON.parse(fs.readFileSync(playersPath));
 }
 
-// Team setup
-const data = require('./data.json'); // contains balances and team-role mappings
+// Load team-role mapping and balances
+const data = require('./data.json');
 
 client.commands = new Collection();
 
-// Slash Commands
 const releaseCommand = new SlashCommandBuilder()
   .setName('release')
   .setDescription('Release a player to free agency')
   .addUserOption(option =>
-    option.setName('player')
-      .setDescription('Player to release')
-      .setRequired(true)
+    option.setName('player').setDescription('Player to release').setRequired(true)
   );
 
 const syncPlayersCommand = new SlashCommandBuilder()
@@ -72,7 +67,7 @@ client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-    body: [releaseCommand.toJSON(), syncPlayersCommand.toJSON()]
+    body: [releaseCommand.toJSON(), syncPlayersCommand.toJSON()],
   });
 
   console.log('✅ Slash commands registered.');
@@ -80,7 +75,7 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
   try {
-    // /syncplayers command
+    // /syncplayers
     if (interaction.isChatInputCommand() && interaction.commandName === 'syncplayers') {
       if (!interaction.memberPermissions.has(PermissionsBitField.Flags.Administrator)) {
         return interaction.reply({ content: '❌ Only admins can run this command.', ephemeral: true });
@@ -95,9 +90,9 @@ client.on('interactionCreate', async interaction => {
       guild.members.cache.forEach(member => {
         if (member.roles.cache.has(PLAYER_ROLE_ID)) {
           newPlayers[member.id] = {
-            name: `@${member.user.username}`,
+            name: `<@${member.id}>`,
             team: null,
-            value: 150.0
+            value: 150.0,
           };
         }
       });
@@ -106,22 +101,24 @@ client.on('interactionCreate', async interaction => {
       players = newPlayers;
 
       await interaction.editReply({
-        content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`
+        content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`,
       });
     }
 
-    // /release command
+    // /release
     if (interaction.isChatInputCommand() && interaction.commandName === 'release') {
       const gm = interaction.member;
       const target = interaction.options.getUser('player');
-      const targetMember = interaction.guild.members.cache.get(target.id);
+      const targetMember = await interaction.guild.members.fetch(target.id);
 
       if (!gm.roles.cache.has(GENERAL_MANAGER_ROLE_ID)) {
         return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
       }
 
       const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-      if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+      if (!gmTeam) {
+        return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+      }
 
       const playerData = players[target.id];
       if (!playerData || playerData.team !== gmTeam) {
@@ -144,11 +141,11 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({
         content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
         components: [row],
-        ephemeral: true
+        ephemeral: true,
       });
     }
 
-    // Button interactions
+    // Button: confirm or cancel release
     if (interaction.isButton()) {
       const [action, playerId] = interaction.customId.split(':');
 
@@ -162,7 +159,9 @@ client.on('interactionCreate', async interaction => {
         if (!playerData) return interaction.update({ content: '❌ Player not found.', components: [] });
 
         const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-        if (!gmTeam || playerData.team !== gmTeam) return interaction.update({ content: '❌ You cannot release this player.', components: [] });
+        if (!gmTeam || playerData.team !== gmTeam) {
+          return interaction.update({ content: '❌ You cannot release this player.', components: [] });
+        }
 
         const refund = playerData.value * 0.5;
         data[gmTeam].balance += refund;
