@@ -1,7 +1,6 @@
 // Discord Transfer Market Bot (Discord.js v14)
-// Fully supports /release command with confirmation, team balances, player database, transfer market listing
 
-const { Client, GatewayIntentBits, Partials, Collection, SlashCommandBuilder, Routes, REST, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, SlashCommandBuilder, Routes, REST, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -13,25 +12,24 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const TOKEN = 'YOUR_BOT_TOKEN';
-const CLIENT_ID = 'YOUR_CLIENT_ID';
-const GUILD_ID = 'YOUR_GUILD_ID';
+// ✅ Environment Variables
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
-// Channel IDs
-const TRANSFER_MARKET_CHANNEL_ID = 'CHANNEL_ID_TRANSFER_MARKET';
-const TEAM_BALANCES_CHANNEL_ID = 'CHANNEL_ID_BALANCES';
-const TRANSACTION_LOG_CHANNEL_ID = 'CHANNEL_ID_LOG';
+const TRANSFER_MARKET_CHANNEL_ID = process.env.TRANSFER_MARKET_CHANNEL_ID;
+const TEAM_BALANCES_CHANNEL_ID = process.env.TEAM_BALANCES_CHANNEL_ID;
+const TRANSACTION_LOG_CHANNEL_ID = process.env.TRANSFER_MARKET_LOG_CHANNEL_ID;
 
-// Role IDs
-const GENERAL_MANAGER_ROLE_ID = 'ROLE_ID_GENERAL_MANAGER';
-const PLAYER_ROLE_ID = 'ROLE_ID_PLAYER';
-const FREE_AGENT_ROLE_ID = 'ROLE_ID_FREE_AGENT';
+const GENERAL_MANAGER_ROLE_ID = process.env.GENERAL_MANAGER_ROLE_ID;
+const PLAYER_ROLE_ID = process.env.PLAYER_ROLE_ID;
+const FREE_AGENT_ROLE_ID = process.env.FREE_AGENT_ROLE_ID;
 
 // --- In-memory database ---
 const teams = {
-  "Lakers": { roleId: 'ROLE_ID_LAKERS', balance: 1000000000 },
-  "Celtics": { roleId: 'ROLE_ID_CELTICS', balance: 1000000000 },
-  // Repeat for all 30 teams
+  "Lakers": { roleId: process.env.ROLE_ID_LAKERS, balance: 1000000000 },
+  "Celtics": { roleId: process.env.ROLE_ID_CELTICS, balance: 1000000000 },
+  // Add the rest of your teams here
 };
 
 const players = {
@@ -151,11 +149,9 @@ client.on('interactionCreate', async interaction => {
       const marketChannel = await client.channels.fetch(TRANSFER_MARKET_CHANNEL_ID);
       await marketChannel.send({ embeds: [embed], components: [row] });
 
-      // Update team balances
       const balanceChannel = await client.channels.fetch(TEAM_BALANCES_CHANNEL_ID);
       await balanceChannel.send(`✅ ${gmTeam} balance updated: **$${teams[gmTeam].balance.toLocaleString()}**`);
 
-      // Log transaction
       const logChannel = await client.channels.fetch(TRANSACTION_LOG_CHANNEL_ID);
       await logChannel.send(`📝 ${playerData.name} released by ${gmTeam}. Refund: **$${refund.toFixed(2)}M**.`);
 
