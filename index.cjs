@@ -1,3 +1,5 @@
+// index.cjs — Full Transfer Market Bot with /release and /syncplayers
+
 const {
   Client,
   GatewayIntentBits,
@@ -12,8 +14,8 @@ const {
   ButtonStyle,
   PermissionsBitField,
 } = require('discord.js');
-const fs = require('fs');
 
+const fs = require('fs');
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -25,7 +27,6 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
-// Environment variables
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
@@ -38,16 +39,13 @@ const GENERAL_MANAGER_ROLE_ID = process.env.GENERAL_MANAGER_ROLE_ID;
 const PLAYER_ROLE_ID = process.env.PLAYER_ROLE_ID;
 const FREE_AGENT_ROLE_ID = process.env.FREE_AGENT_ROLE_ID;
 
-// Load or initialize player data
 const playersPath = './players.json';
 let players = {};
 if (fs.existsSync(playersPath)) {
   players = JSON.parse(fs.readFileSync(playersPath));
 }
 
-// Load team-role mapping and balances
 const data = require('./data.json');
-
 client.commands = new Collection();
 
 const releaseCommand = new SlashCommandBuilder()
@@ -65,87 +63,87 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-
   await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
     body: [releaseCommand.toJSON(), syncPlayersCommand.toJSON()],
   });
-
   console.log('✅ Slash commands registered.');
 });
 
 client.on('interactionCreate', async interaction => {
   try {
-    // /syncplayers
-    if (interaction.isChatInputCommand() && interaction.commandName === 'syncplayers') {
-      if (!interaction.memberPermissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: '❌ Only admins can run this command.', ephemeral: true });
-      }
-
-      await interaction.deferReply({ ephemeral: true });
-      const guild = interaction.guild;
-      await guild.members.fetch();
-
-      const newPlayers = {};
-
-      guild.members.cache.forEach(member => {
-        if (member.roles.cache.has(PLAYER_ROLE_ID)) {
-          newPlayers[member.id] = {
-            name: `<@${member.id}>`,
-            team: null,
-            value: 150.0,
-          };
+    if (interaction.isChatInputCommand()) {
+      // /syncplayers
+      if (interaction.commandName === 'syncplayers') {
+        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.Administrator)) {
+          return interaction.reply({ content: '❌ Only admins can run this command.', ephemeral: true });
         }
-      });
 
-      fs.writeFileSync(playersPath, JSON.stringify(newPlayers, null, 2));
-      players = newPlayers;
+        await interaction.deferReply({ ephemeral: true });
+        const guild = interaction.guild;
+        await guild.members.fetch();
 
-      await interaction.editReply({
-        content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`,
-      });
+        const newPlayers = {};
+
+        guild.members.cache.forEach(member => {
+          if (member.roles.cache.has(PLAYER_ROLE_ID)) {
+            let assignedTeam = null;
+            for (const team in data) {
+              if (member.roles.cache.has(data[team].roleId)) {
+                assignedTeam = team;
+                break;
+              }
+            }
+
+            newPlayers[member.id] = {
+              name: `<@${member.id}>`,
+              team: assignedTeam,
+              value: 150.0,
+            };
+          }
+        });
+
+        fs.writeFileSync(playersPath, JSON.stringify(newPlayers, null, 2));
+        players = newPlayers;
+
+        await interaction.editReply({
+          content: `✅ Synced ${Object.keys(newPlayers).length} players into players.json`,
+        });
+      }
+
+      // /release
+      if (interaction.commandName === 'release') {
+        const gm = interaction.member;
+        const target = interaction.options.getUser('player');
+        const targetMember = interaction.guild.members.cache.get(target.id);
+
+        if (!gm.roles.cache.has(GENERAL_MANAGER_ROLE_ID)) {
+          return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
+        }
+
+        const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
+        if (!gmTeam) return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
+
+        const playerData = players[target.id];
+        if (!playerData || playerData.team !== gmTeam) {
+          return interaction.reply({ content: '❌ That player is not on your team.', ephemeral: true });
+        }
+
+        const refund = playerData.value * 0.5;
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`confirm_release:${target.id}`).setLabel('Yes, release').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('cancel_release').setLabel('No, cancel').setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({
+          content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
+          components: [row],
+          ephemeral: true,
+        });
+      }
     }
 
-    // /release
-    if (interaction.isChatInputCommand() && interaction.commandName === 'release') {
-      const gm = interaction.member;
-      const target = interaction.options.getUser('player');
-      const targetMember = await interaction.guild.members.fetch(target.id);
-
-      if (!gm.roles.cache.has(GENERAL_MANAGER_ROLE_ID)) {
-        return interaction.reply({ content: '❌ Only general managers can release players.', ephemeral: true });
-      }
-
-      const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-      if (!gmTeam) {
-        return interaction.reply({ content: '❌ You are not assigned to any team.', ephemeral: true });
-      }
-
-      const playerData = players[target.id];
-      if (!playerData || playerData.team !== gmTeam) {
-        return interaction.reply({ content: '❌ That player is not on your team.', ephemeral: true });
-      }
-
-      const refund = playerData.value * 0.5;
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`confirm_release:${target.id}`)
-          .setLabel('Yes, release')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('cancel_release')
-          .setLabel('No, cancel')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      await interaction.reply({
-        content: `Are you sure you want to release **${playerData.name}**?\nYou will receive **$${refund.toFixed(2)}M** back.`,
-        components: [row],
-        ephemeral: true,
-      });
-    }
-
-    // Button: confirm or cancel release
+    // Button interaction
     if (interaction.isButton()) {
       const [action, playerId] = interaction.customId.split(':');
 
@@ -159,9 +157,7 @@ client.on('interactionCreate', async interaction => {
         if (!playerData) return interaction.update({ content: '❌ Player not found.', components: [] });
 
         const gmTeam = Object.keys(data).find(team => gm.roles.cache.has(data[team].roleId));
-        if (!gmTeam || playerData.team !== gmTeam) {
-          return interaction.update({ content: '❌ You cannot release this player.', components: [] });
-        }
+        if (!gmTeam || playerData.team !== gmTeam) return interaction.update({ content: '❌ You cannot release this player.', components: [] });
 
         const refund = playerData.value * 0.5;
         data[gmTeam].balance += refund;
@@ -188,10 +184,7 @@ client.on('interactionCreate', async interaction => {
           .setColor('Green');
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`buy:${playerId}`)
-            .setLabel('BUY')
-            .setStyle(ButtonStyle.Success)
+          new ButtonBuilder().setCustomId(`buy:${playerId}`).setLabel('BUY').setStyle(ButtonStyle.Success)
         );
 
         const marketChannel = await client.channels.fetch(TRANSFER_MARKET_CHANNEL_ID);
