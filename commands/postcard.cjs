@@ -24,7 +24,7 @@ module.exports = {
 
   async execute(interaction) {
     const name = interaction.options.getString('name');
-    const price = interaction.options.getNumber('price'); // ✅ using getNumber for decimals
+    const price = interaction.options.getNumber('price');
     const image = interaction.options.getAttachment('image');
     const isFreeAgent = interaction.options.getBoolean('freeagent');
 
@@ -33,7 +33,7 @@ module.exports = {
       .addFields(
         {
           name: '💰 Value',
-          value: `$${price.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1')}M`,
+          value: `$${parseFloat(price.toFixed(2)).toString()}M`,
           inline: true
         },
         {
