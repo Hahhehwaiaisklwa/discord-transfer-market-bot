@@ -1,4 +1,4 @@
-// index.cjs — Updated Transfer Market Bot with BUY Button Logic
+// index.cjs — Final Transfer Market Bot with BUY + POSTCARD Support
 
 const {
   Client,
@@ -15,6 +15,7 @@ const {
   PermissionsBitField,
 } = require('discord.js');
 const fs = require('fs');
+const { data: postcardCommand, execute: postcardExecute } = require('./commands/postcard.js');
 
 const client = new Client({
   intents: [
@@ -63,7 +64,7 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-    body: [releaseCommand.toJSON(), syncPlayersCommand.toJSON()],
+    body: [releaseCommand.toJSON(), syncPlayersCommand.toJSON(), postcardCommand.toJSON()],
   });
   console.log('✅ Slash commands registered.');
 });
@@ -71,7 +72,6 @@ client.once('ready', async () => {
 client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isChatInputCommand()) {
-      // Handle /syncplayers
       if (interaction.commandName === 'syncplayers') {
         if (!interaction.memberPermissions.has(PermissionsBitField.Flags.Administrator)) {
           return interaction.reply({ content: '❌ Only admins can run this command.', ephemeral: true });
@@ -109,9 +109,12 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // Handle /release (existing logic stays untouched)
       if (interaction.commandName === 'release') {
-        // ... keep existing release logic
+        // keep existing release logic here
+      }
+
+      if (interaction.commandName === 'postcard') {
+        return postcardExecute(interaction);
       }
     }
 
